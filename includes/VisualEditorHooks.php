@@ -408,12 +408,9 @@ class VisualEditorHooks {
 		}
 
 		$title = $skin->getRelevantTitle();
-		$namespaceEnabled = ApiVisualEditor::isAllowedNamespace( $config, $title->getNamespace() );
-		$pageContentModel = $title->getContentModel();
-		$contentModelEnabled = ApiVisualEditor::isAllowedContentType( $config, $pageContentModel );
 		// Don't exit if this page isn't VE-enabled, since we should still
 		// change "Edit" to "Edit source".
-		$isAvailable = $namespaceEnabled && $contentModelEnabled;
+		$isAvailable = self::isVisualAvailable( $title );
 
 		$tabMessages = $config->get( 'VisualEditorTabMessages' );
 		// Rebuild the $links['views'] array and inject the VisualEditor tab before or after
@@ -581,7 +578,7 @@ class VisualEditorHooks {
 			return;
 		}
 
-		$editor = self::getLastEditor( $user, RequestContext::getMain()->getRequest() );
+		$editor = self::getLastEditor( $user, $skin->getRequest() );
 		if (
 			!$config->get( 'VisualEditorUseSingleEditTab' ) ||
 			$user->getOption( 'visualeditor-tabs' ) === 'multi-tab' ||
@@ -605,7 +602,7 @@ class VisualEditorHooks {
 		}
 
 		// add VE edit section in VE available namespaces
-		if ( ApiVisualEditor::isAllowedNamespace( $config, $title->getNamespace() ) ) {
+		if ( self::isVisualAvailable( $title ) ) {
 			$veEditSection = $tabMessages['editsection'];
 			$veLink = [
 				'text' => $skin->msg( $veEditSection )->inLanguage( $lang )->text(),
