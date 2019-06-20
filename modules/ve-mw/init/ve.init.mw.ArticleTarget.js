@@ -517,7 +517,6 @@ ve.init.mw.ArticleTarget.prototype.surfaceReady = function () {
 	surfaceModel.connect( this, {
 		history: 'updateToolbarSaveButtonState'
 	} );
-	this.restoreEditSection();
 
 	// Iterate over the trigger registry and resolve any access key conflicts
 	for ( name in ve.ui.triggerRegistry.registry ) {
@@ -544,6 +543,10 @@ ve.init.mw.ArticleTarget.prototype.surfaceReady = function () {
 
 	// Parent method
 	ve.init.mw.ArticleTarget.super.prototype.surfaceReady.apply( this, arguments );
+
+	// Do this after window is made scrollable on mobile
+	// ('surfaceReady' handler in VisualEditorOverlay in MobileFrontend)
+	this.restoreEditSection();
 
 	mw.hook( 've.activationComplete' ).fire();
 };
@@ -1201,12 +1204,7 @@ ve.init.mw.ArticleTarget.prototype.clearState = function () {
 ve.init.mw.ArticleTarget.prototype.editSource = function () {
 	var modified = this.fromEditedState || this.getSurface().getModel().hasBeenModified();
 
-	if ( ve.init.target.isModeAvailable( 'source' ) || !modified ) {
-		this.switchToWikitextEditor( modified );
-	} else {
-		ve.ui.actionFactory.create( 'window', this.getSurface() )
-			.open( 'wikitextswitchconfirm', { target: this } );
-	}
+	this.switchToWikitextEditor( modified );
 };
 
 /**
@@ -1898,9 +1896,9 @@ ve.init.mw.ArticleTarget.prototype.getSaveButtonLabel = function ( startProcess 
 	var suffix = startProcess ? '-start' : '';
 	// The following messages can be used here
 	// * publishpage
-	// * pubishhpage-start
+	// * publishpage-start
 	// * publishchanges
-	// * pubishhchanges-start
+	// * publishchanges-start
 	// * savearticle
 	// * savearticle-start
 	// * savechanges

@@ -1033,8 +1033,6 @@ ve.init.mw.DesktopArticleTarget.prototype.serializeFail = function ( jqXHR, stat
 
 	OO.ui.alert( ve.msg( 'visualeditor-serializeerror', status ) );
 
-	this.getSurface().getDialogs().closeWindow( 'wikitextswitchconfirm' );
-
 	// It's possible to get here while the save dialog has never been opened (if the user uses
 	// the switch to source mode option)
 	if ( this.saveDialog ) {
@@ -1541,7 +1539,7 @@ ve.init.mw.DesktopArticleTarget.prototype.switchToFallbackWikitextEditor = funct
 			uri = target.viewUri.clone().extend( {
 				action: 'edit',
 				// No changes, safe to stay in section mode
-				section: target.section,
+				section: target.section !== null ? target.section : undefined,
 				veswitched: 1
 			} );
 			if ( oldId && oldId !== mw.config.get( 'wgCurRevisionId' ) ) {

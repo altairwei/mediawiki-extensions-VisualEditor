@@ -21,6 +21,8 @@ ve.init.mw.MobileArticleTarget = function VeInitMwMobileArticleTarget( overlay, 
 	this.$overlay = overlay.$el;
 	this.$overlaySurface = overlay.$el.find( '.surface' );
 
+	ve.newMobileContext = mw.config.get( 'wgVisualEditorConfig' ).enableNewMobileContext;
+
 	config = config || {};
 	config.toolbarConfig = $.extend( {
 		actions: false
@@ -34,10 +36,6 @@ ve.init.mw.MobileArticleTarget = function VeInitMwMobileArticleTarget( overlay, 
 
 	// Initialization
 	this.$element.addClass( 've-init-mw-mobileArticleTarget' );
-
-	if ( ve.init.platform.constructor.static.isIos() ) {
-		this.$element.addClass( 've-init-mw-mobileArticleTarget-ios' );
-	}
 };
 
 /* Inheritance */
@@ -117,14 +115,6 @@ ve.init.mw.MobileArticleTarget.prototype.activateSurfaceForToolbar = function ()
 		// restore the scroll offset from before the toolbar was opened (T218650).
 		this.getSurface().$scrollContainer.scrollTop( this.prevScrollPosition );
 	}
-};
-
-/**
- * Destroy the target
- */
-ve.init.mw.MobileArticleTarget.prototype.destroy = function () {
-	// Parent method
-	ve.init.mw.MobileArticleTarget.super.prototype.destroy.call( this );
 };
 
 /**
@@ -274,6 +264,10 @@ ve.init.mw.MobileArticleTarget.prototype.surfaceReady = function () {
 		return;
 	}
 
+	// Calls scrollSelectionIntoView so must be called before parent,
+	// which calls goToHeading. (T225292)
+	this.adjustContentPadding();
+
 	// Parent method
 	ve.init.mw.MobileArticleTarget.super.prototype.surfaceReady.apply( this, arguments );
 
@@ -289,7 +283,6 @@ ve.init.mw.MobileArticleTarget.prototype.surfaceReady = function () {
 	this.overlay.hideSpinner();
 
 	surface.getContext().connect( this, { resize: 'adjustContentPaddingDebounced' } );
-	this.adjustContentPadding();
 
 	this.maybeShowWelcomeDialog();
 };
@@ -298,10 +291,16 @@ ve.init.mw.MobileArticleTarget.prototype.surfaceReady = function () {
  * Match the content padding to the toolbar height
  */
 ve.init.mw.MobileArticleTarget.prototype.adjustContentPadding = function () {
-	var toolbarHeight = this.getToolbar().$element.outerHeight(),
-		surface = this.getSurface(),
-		surfaceView = surface.getView();
-	surface.setPadding( { top: toolbarHeight } );
+	var surface = this.getSurface(),
+		surfaceView = surface.getView(),
+		toolbarHeight = this.getToolbar().$element[ 0 ].clientHeight,
+		contextHeight = ve.newMobileContext ?
+			surface.getContext().$element[ 0 ].clientHeight : 0;
+
+	surface.setPadding( {
+		top: toolbarHeight,
+		bottom: contextHeight
+	} );
 	surfaceView.$attachedRootNode.css( 'padding-top', toolbarHeight );
 	surface.$placeholder.css( 'padding-top', toolbarHeight );
 	surfaceView.emit( 'position' );
@@ -356,10 +355,12 @@ ve.init.mw.MobileArticleTarget.prototype.createTargetWidget = function ( config 
 	// Parent method
 	var targetWidget = ve.init.mw.MobileArticleTarget.super.prototype.createTargetWidget.call( this, config );
 
-	targetWidget.once( 'setup', function () {
-		// Append the context to the toolbar
-		targetWidget.getToolbar().$bar.append( targetWidget.getSurface().getContext().$element );
-	} );
+	if ( !ve.newMobileContext ) {
+		targetWidget.once( 'setup', function () {
+			// Append the context to the toolbar
+			targetWidget.getToolbar().$bar.append( targetWidget.getSurface().getContext().$element );
+		} );
+	}
 
 	return targetWidget;
 };
@@ -452,11 +453,7 @@ ve.init.mw.MobileArticleTarget.prototype.saveFail = function ( doc, saveData, wa
  * @inheritdoc
  */
 ve.init.mw.MobileArticleTarget.prototype.tryTeardown = function () {
-	// Parent method
-	ve.init.mw.MobileArticleTarget.super.prototype.tryTeardown.apply( this, arguments )
-		.then( function () {
-			window.history.back();
-		} );
+	window.history.back();
 };
 
 /**
@@ -482,8 +479,6 @@ ve.init.mw.MobileArticleTarget.prototype.load = function () {
  * @inheritdoc
  */
 ve.init.mw.MobileArticleTarget.prototype.setupToolbar = function ( surface ) {
-	var $header = this.overlay.$el.find( '.overlay-header-container' );
-
 	if ( !this.pageToolbar ) {
 		this.pageToolbar = new ve.ui.TargetToolbar( this, { actions: true } );
 	}
@@ -516,7 +511,7 @@ ve.init.mw.MobileArticleTarget.prototype.setupToolbar = function ( surface ) {
 	if ( !this.$title ) {
 		this.$title = $( '<div>' ).addClass( 've-init-mw-mobileArticleTarget-title-container' ).append(
 			$( '<div>' ).addClass( 've-init-mw-mobileArticleTarget-title' ).text(
-				new mw.Title( ve.init.target.getPageName() ).getMainText()
+				new mw.Title( this.getPageName() ).getMainText()
 			)
 		);
 	}
@@ -544,19 +539,9 @@ ve.init.mw.MobileArticleTarget.prototype.setupToolbar = function ( surface ) {
 	);
 
 	this.toolbar.$element.addClass( 've-init-mw-mobileArticleTarget-toolbar' );
-	// Append the context to the toolbar
-	this.toolbar.$bar.append( surface.getContext().$element );
-
-	// Animate the toolbar sliding into place.
-	// Do not animate if we're replacing the wikitext editor toolbar.
-	if ( !this.overlay.options.switched ) {
-		$header.addClass( 'toolbar-hidden' );
-		setTimeout( function () {
-			$header.addClass( 'toolbar-shown' );
-			setTimeout( function () {
-				$header.addClass( 'toolbar-shown-done' );
-			}, 250 );
-		} );
+	if ( !ve.newMobileContext ) {
+		// Append the context to the toolbar
+		this.toolbar.$bar.append( surface.getContext().$element );
 	}
 
 	// Don't wait for the first surface focus/blur event to hide one of the toolbars
