@@ -479,6 +479,8 @@ ve.init.mw.MobileArticleTarget.prototype.load = function () {
  * @inheritdoc
  */
 ve.init.mw.MobileArticleTarget.prototype.setupToolbar = function ( surface ) {
+	var $header = this.overlay.$el.find( '.overlay-header-container' );
+
 	if ( !this.pageToolbar ) {
 		this.pageToolbar = new ve.ui.TargetToolbar( this, { actions: true } );
 	}
@@ -542,6 +544,18 @@ ve.init.mw.MobileArticleTarget.prototype.setupToolbar = function ( surface ) {
 	if ( !ve.newMobileContext ) {
 		// Append the context to the toolbar
 		this.toolbar.$bar.append( surface.getContext().$element );
+	}
+
+	// Animate the toolbar sliding into place.
+	// Do not animate if we're replacing the wikitext editor toolbar.
+	if ( !this.overlay.options.switched ) {
+		$header.addClass( 'toolbar-hidden' );
+		setTimeout( function () {
+			$header.addClass( 'toolbar-shown' );
+			setTimeout( function () {
+				$header.addClass( 'toolbar-shown-done' );
+			}, 250 );
+		} );
 	}
 
 	// Don't wait for the first surface focus/blur event to hide one of the toolbars
